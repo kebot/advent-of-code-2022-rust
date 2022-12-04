@@ -73,8 +73,6 @@ struct TopThree {
     vec: Vec<u32>
 }
 
-// pub, push, remove //
-
 impl TopThree {
     fn new () -> Self {
         Self {
