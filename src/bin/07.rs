@@ -74,6 +74,38 @@ impl<'a> Shell {
         }
     }
 
+    fn init_with_input (input: &str) -> Self {
+        let mut shell = Shell::init();
+
+        for line in input.lines() {
+            // println!("{}", line);
+
+            if line.starts_with('$') {
+                // Possible Commands: [$, cd, /] or [$, ls]
+                let commands: Vec<&str> = line.split(' ').collect();
+
+                if commands[1] == "cd" {
+                    shell.cd(commands[2]);
+                } else if commands[1] == "ls" {
+                    // don't need do anything for ls
+                } else {
+                    println!("unknown commands {:?}", commands);
+                }
+            } else {
+                // dir <dir_name>
+                let outputs: Vec<&str> = line.split(' ').collect();
+
+                if outputs[0] == "dir" {
+                    shell.mkdir(outputs[1]);
+                } else {
+                    shell.touch(outputs[0].parse().unwrap_or(0), outputs[1])
+                }
+            }
+        }
+
+        shell
+    }
+
     fn pwd(&'a self) -> FileNodeRef {
         self.dir_history.last().unwrap_or(&self.root).clone()
     }
@@ -137,33 +169,7 @@ impl<'a> Shell {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let mut shell = Shell::init();
-
-    for line in input.lines() {
-        // println!("{}", line);
-
-        if line.starts_with('$') {
-            // Possible Commands: [$, cd, /] or [$, ls]
-            let commands: Vec<&str> = line.split(' ').collect();
-
-            if commands[1] == "cd" {
-                shell.cd(commands[2]);
-            } else if commands[1] == "ls" {
-                // don't need do anything for ls
-            } else {
-                println!("unknown commands {:?}", commands);
-            }
-        } else {
-            // dir <dir_name>
-            let outputs: Vec<&str> = line.split(' ').collect();
-
-            if outputs[0] == "dir" {
-                shell.mkdir(outputs[1]);
-            } else {
-                shell.touch(outputs[0].parse().unwrap_or(0), outputs[1])
-            }
-        }
-    }
+    let shell = Shell::init_with_input(input);
 
     let mut total_size = 0;
 
@@ -171,7 +177,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     for dir in dirs {
         let node = (*dir).borrow();
 
-        println!("{} {}", node.name, node.size);
+        // println!("{} {}", node.name, node.size);
         if node.size < 100000 {
             total_size += node.size;
         }
@@ -185,7 +191,30 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let shell = Shell::init_with_input(input);
+
+    const TOTAL_SIZE: u32 = 70000000;
+    const NEEDED_SIZE: u32 = 30000000;
+
+    let root_size = shell.root.borrow().size;
+    let deleted_size = NEEDED_SIZE - (TOTAL_SIZE - root_size);
+
+    let mut size = root_size;
+
+    if size < deleted_size {
+        return None
+    }
+
+    for dir in (*shell.root).borrow().get_children_dirs() {
+        let node = (*dir).borrow();
+
+        // println!("{} {}", node.name, node.size);
+        if node.size > deleted_size && node.size < size {
+            size = node.size
+        }
+    }
+
+    Some(size)
 }
 
 fn main() {
@@ -207,6 +236,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 7);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(24933642));
     }
 }
